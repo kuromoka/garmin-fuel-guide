@@ -20,16 +20,16 @@ class FuelGuideField extends WatchUi.DataField {
     const JEV_URL = "https://api.typesafe.ai/v1/systemone";
     var samples; var lastSampleSeconds; var lastTimerSeconds; var sessionId; var sessionNumber; var sequence; var callsThisSession;
     var inFlight; var pendingSequence; var pendingSessionId; var pendingSinceMs; var nextRequestMs; var disabled;
-    var characterMood; var characterConfidence; var fromJev; var characterExpiresSeconds; var displayStatus; var buddyRenderer;
+    var characterMood; var characterConfidence; var fromJev; var characterExpiresSeconds; var displayStatus; var buddyRenderer; var weatherContext;
 
     function initialize() {
         DataField.initialize(); samples = []; lastSampleSeconds = null; lastTimerSeconds = null; sessionNumber = 0; sessionId = makeSessionId(); sequence = 0; callsThisSession = 0;
         inFlight = false; pendingSequence = null; pendingSessionId = null; pendingSinceMs = null; nextRequestMs = 0; disabled = false;
-        characterMood = "calm"; characterConfidence = null; fromJev = false; characterExpiresSeconds = 0; displayStatus = sameText(networkMode(), "jev") ? "JEV WAITING" : "DEMO / NO API"; buddyRenderer = new BuddyRenderer();
+        characterMood = "calm"; characterConfidence = null; fromJev = false; characterExpiresSeconds = 0; displayStatus = sameText(networkMode(), "jev") ? "JEV WAITING" : "DEMO / NO API"; buddyRenderer = new BuddyRenderer(); weatherContext = new WeatherContext();
     }
     function onTimerReset() { resetSession(); }
-    function onTimerStop() { invalidatePendingRequest(); }
-    function onTimerPause() { invalidatePendingRequest(); }
+    function onTimerStop() { invalidatePendingRequest(); weatherContext.clearMovement(); }
+    function onTimerPause() { invalidatePendingRequest(); weatherContext.clearMovement(); }
     function onTimerStart() { }
     function onTimerResume() { }
 
@@ -37,14 +37,18 @@ class FuelGuideField extends WatchUi.DataField {
         var elapsed = secondsFromInfo(info);
         if (lastTimerSeconds != null && elapsed < lastTimerSeconds) { resetSession(); }
         lastTimerSeconds = elapsed;
-        if (info.timerState != Activity.TIMER_STATE_ON) { invalidatePendingRequest(); displayStatus = "PAUSED"; return; }
+        var running = info.timerState == Activity.TIMER_STATE_ON;
+        var wallSeconds = wallClockSeconds();
+        weatherContext.refresh(wallSeconds); weatherContext.updateMovement(info, running, wallSeconds);
+        if (!running) { invalidatePendingRequest(); displayStatus = "PAUSED"; return; }
         if (lastSampleSeconds == null || elapsed - lastSampleSeconds >= SAMPLE_PERIOD_SECONDS) { appendSample(info, elapsed); lastSampleSeconds = elapsed; }
         expireCharacterIfNeeded(elapsed);
         checkTimeout(); requestIfDue(info, elapsed);
     }
-    function onUpdate(dc) { var elapsed = lastTimerSeconds == null ? 0 : lastTimerSeconds; if (!sameText(networkMode(), "jev")) { elapsed = nowMs() / 1000; showDemo(elapsed); } buddyRenderer.draw(dc, characterMood, characterConfidence, displayStatus, fromJev, elapsed); }
+    function onUpdate(dc) { var elapsed = lastTimerSeconds == null ? 0 : lastTimerSeconds; if (!sameText(networkMode(), "jev")) { elapsed = nowMs() / 1000; showDemo(elapsed); } buddyRenderer.draw(dc, characterMood, characterConfidence, displayStatus, fromJev, elapsed, weatherContext.snapshot(wallClockSeconds())); }
     function secondsFromInfo(info) { return info.timerTime == null ? 0 : info.timerTime / 1000; }
     function nowMs() { return System.getTimer(); }
+    function wallClockSeconds() { return Time.now().value(); }
     function appendSample(info, elapsed) { samples.add({ :time => elapsed, :heartRate => info.currentHeartRate, :speed => info.currentSpeed, :cadence => info.currentCadence }); if (samples.size() > MAX_SAMPLES) { samples = samples.slice(1, null); } }
 
     function requestIfDue(info, elapsed) {
@@ -57,16 +61,17 @@ class FuelGuideField extends WatchUi.DataField {
         if (callsThisSession >= maxCalls()) { displayStatus = "JEV LIMIT"; return; }
         sequence += 1; callsThisSession += 1; inFlight = true; pendingSequence = sequence; pendingSessionId = sessionId; pendingSinceMs = now; nextRequestMs = now + intervalMs(); displayStatus = "JEV WAITING";
         var headers = { "Content-Type" => Communications.REQUEST_CONTENT_TYPE_JSON, "Authorization" => "Bearer " + key };
-        var body = { "model" => "jev-latest", "state" => observedState(info, elapsed), "questions" => { "character_mood" => { "type" => "choice", "instructions" => "Choose a playful visual mood from observed running data, not a health or fatigue diagnosis. Missing values are unknown.", "criteria" => { "calm" => "low motion or relaxed rhythm", "steady" => "consistent motion and rhythm", "bouncy" => "lively or changing rhythm", "focused" => "sustained purposeful movement" } } } };
+        var body = { "model" => "jev-latest", "state" => observedState(info, elapsed), "questions" => { "character_mood" => { "type" => "choice", "instructions" => "Choose a playful visual mood from observed running data and cached weather context, not a health or fatigue diagnosis. Weather is cached, not real-time; an unknown or over-six-hour age is unreliable. Missing values are unknown.", "criteria" => { "calm" => "low motion or relaxed rhythm", "steady" => "consistent motion and rhythm", "bouncy" => "lively or changing rhythm", "focused" => "sustained purposeful movement" } } } };
         var options = { :method => Communications.HTTP_REQUEST_METHOD_POST, :headers => headers, :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON, :context => { "sessionId" => sessionId, "sequence" => sequence } };
         try { sendRequest(body, headers, options); } catch (ex) { inFlight = false; pendingSinceMs = null; displayStatus = "JEV ERROR"; }
     }
     function sendRequest(body, headers, options) { Communications.makeWebRequest(JEV_URL, body, options, method(:onJevResponse)); }
     function showDemo(elapsed) { var moods = ["calm", "steady", "bouncy", "focused"]; characterMood = moods[(elapsed / 8).toNumber() % 4]; characterConfidence = null; fromJev = false; displayStatus = "DEMO / NO API"; }
     function ready(info, elapsed) { return samples.size() >= 4 && elapsed - samples[0][:time] >= 15 && (inRange(info.currentHeartRate, 20, 250) || inRange(info.currentSpeed, 0, 15) || inRange(info.currentCadence, 0, 300)); }
-    function observedState(info, elapsed) { return "schemaVersion=1;sessionId=" + sessionId + ";sequence=" + sequence + ";elapsedSeconds=" + elapsed + ";heartRate=" + observedNumber(info.currentHeartRate, 20, 250) + ";speedMps=" + observedNumber(info.currentSpeed, 0, 15) + ";cadenceRpm=" + observedNumber(info.currentCadence, 0, 300) + ";sampleCount=" + samples.size() + ";windowSeconds=" + (samples.size() > 0 ? elapsed - samples[0][:time] : 0) + ";recentSamples=" + recentSamplesText(); }
+    function observedState(info, elapsed) { var environment = weatherContext.snapshot(wallClockSeconds()); return "schemaVersion=1;sessionId=" + sessionId + ";sequence=" + sequence + ";elapsedSeconds=" + elapsed + ";heartRate=" + observedNumber(info.currentHeartRate, 20, 250) + ";speedMps=" + observedNumber(info.currentSpeed, 0, 15) + ";cadenceRpm=" + observedNumber(info.currentCadence, 0, 300) + ";sampleCount=" + samples.size() + ";windowSeconds=" + (samples.size() > 0 ? elapsed - samples[0][:time] : 0) + ";recentSamples=" + recentSamplesText() + ";temperatureC=" + environmentNumber(environment["temperatureC"], -100, 100) + ";humidityPercent=" + environmentNumber(environment["humidityPercent"], 0, 100) + ";windSpeedMps=" + environmentNumber(environment["windSpeedMps"], 0, 100) + ";windFromDeg=" + environmentNumber(environment["windFromDeg"], 0, 360) + ";weatherAgeSeconds=" + environmentNumber(environment["weatherAgeSeconds"], 0, 31536000) + ";courseDeg=" + environmentNumber(environment["courseDeg"], 0, 360) + ";relativeWindFromDeg=" + environmentNumber(environment["relativeWindFromDeg"], 0, 360); }
     function textOf(value) { return value == null ? "null" : value.toString(); }
     function observedNumber(value, minimum, maximum) { return inRange(value, minimum, maximum) ? value.toString() : "unknown"; }
+    function environmentNumber(value, minimum, maximum) { return observedNumber(value, minimum, maximum); }
     function recentSamplesText() { var text = ""; var start = samples.size() > 6 ? samples.size() - 6 : 0; for (var i = start; i < samples.size(); i += 1) { var s = samples[i]; text += (i == start ? "" : "|") + "t=" + textOf(s[:time]) + ",hr=" + observedNumber(s[:heartRate], 20, 250) + ",speed=" + observedNumber(s[:speed], 0, 15) + ",cad=" + observedNumber(s[:cadence], 0, 300); } return text; }
     function expireCharacterIfNeeded(elapsed) { if (fromJev && characterExpiresSeconds > 0 && elapsed >= characterExpiresSeconds) { characterMood = "calm"; characterConfidence = null; fromJev = false; characterExpiresSeconds = 0; displayStatus = "JEV STALE"; } }
 
@@ -98,6 +103,6 @@ class FuelGuideField extends WatchUi.DataField {
     function sameText(first, second) { return first instanceof Lang.String && second instanceof Lang.String && first.equals(second); }
     function maximum(first, second) { return first > second ? first : second; }
     function invalidatePendingRequest() { if (inFlight) { pendingSequence = -1; pendingSessionId = ""; pendingSinceMs = null; inFlight = false; Communications.cancelAllRequests(); } }
-    function resetSession() { invalidatePendingRequest(); samples = []; lastSampleSeconds = null; lastTimerSeconds = null; sessionNumber += 1; sessionId = makeSessionId(); sequence = 0; callsThisSession = 0; nextRequestMs = 0; disabled = false; characterMood = "calm"; characterConfidence = null; fromJev = false; characterExpiresSeconds = 0; }
+    function resetSession() { invalidatePendingRequest(); weatherContext.clearMovement(); samples = []; lastSampleSeconds = null; lastTimerSeconds = null; sessionNumber += 1; sessionId = makeSessionId(); sequence = 0; callsThisSession = 0; nextRequestMs = 0; disabled = false; characterMood = "calm"; characterConfidence = null; fromJev = false; characterExpiresSeconds = 0; }
     function makeSessionId() { return Time.now().value().toString() + "-" + sessionNumber.toString(); }
 }

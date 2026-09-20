@@ -23,5 +23,22 @@
         <string id="StatusJevRateLimit">送信待ち</string>
         <string id="StatusJevError">通信エラー</string>
         <string id="StatusJevStale">更新待ち</string>
+        <string id="WeatherAgeUnknown">観測時刻不明</string>
+        <string id="WeatherObserved">観測</string>
+        <string id="WeatherOld">古い観測</string>
+        <string id="WeatherMinutesAgo">分前</string>
+        <string id="WeatherHoursAgo">時間前</string>
+        <string id="WindFront">前からの風</string>
+        <string id="WindFrontRight">右前からの風</string>
+        <string id="WindRight">右からの風</string>
+        <string id="WindBackRight">右後ろからの風</string>
+        <string id="WindBack">後ろからの風</string>
+        <string id="WindBackLeft">左後ろからの風</string>
+        <string id="WindLeft">左からの風</string>
+        <string id="WindFrontLeft">左前からの風</string>
+        <string id="WindUnknown">風の向き --</string>
+        <string id="WindCalm">ほぼ無風</string>
+        <string id="WindNeedsMovement">走行・GPS待ち</string>
+        <string id="WindScreenUp">上＝進行方向</string>
     </strings>
 </resources>

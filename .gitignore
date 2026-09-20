@@ -17,6 +17,7 @@ ciq/build/
 /.claude/
 /CLAUDE.md
 /PROGRESS.md
+/claude-progress.md
 /feature_list.json
 
 # Credentials and runtime artifacts

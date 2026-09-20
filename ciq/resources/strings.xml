@@ -23,5 +23,22 @@
         <string id="StatusJevRateLimit">JEV RATE LIMIT</string>
         <string id="StatusJevError">JEV ERROR</string>
         <string id="StatusJevStale">JEV STALE</string>
+        <string id="WeatherAgeUnknown">WEATHER TIME UNKNOWN</string>
+        <string id="WeatherObserved">OBS</string>
+        <string id="WeatherOld">OLD</string>
+        <string id="WeatherMinutesAgo"> min ago</string>
+        <string id="WeatherHoursAgo"> hr ago</string>
+        <string id="WindFront">HEADWIND</string>
+        <string id="WindFrontRight">FROM FRONT RIGHT</string>
+        <string id="WindRight">FROM RIGHT</string>
+        <string id="WindBackRight">FROM BACK RIGHT</string>
+        <string id="WindBack">TAILWIND</string>
+        <string id="WindBackLeft">FROM BACK LEFT</string>
+        <string id="WindLeft">FROM LEFT</string>
+        <string id="WindFrontLeft">FROM FRONT LEFT</string>
+        <string id="WindUnknown">WIND DIRECTION --</string>
+        <string id="WindCalm">CALM WIND</string>
+        <string id="WindNeedsMovement">WAITING FOR GPS / RUN</string>
+        <string id="WindScreenUp">UP = FORWARD</string>
     </strings>
 </resources>
