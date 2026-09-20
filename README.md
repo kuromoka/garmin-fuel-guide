@@ -4,7 +4,7 @@
 
 **初期状態はモックです。Jevへの送信や課金は発生しません。** 疲労や脱水の診断、30分以内のガス欠確率、補給量の決定には使えません。画面の候補は実験用の参考表示です。
 
-開発者向けの手順です。最初は「ローカルで試す」を実行し、ウォッチで使う段階で「Forerunner 265向けにビルドする」に進んでください。
+当面は自分のForerunner 265へUSB経由で入れる使い方を前提にしています。ストア公開は不要です。中継サーバーは「ローカルで試す」、ウォッチへの導入は「自分のウォッチで使う」を参照してください。
 
 ## データはウォッチで集計し、中継経由でJevに送る
 
@@ -51,6 +51,40 @@ pnpm start
 
 別のターミナルで `curl http://127.0.0.1:8787/health` を実行します。モックの応答は通信と表示を試すための固定ルールであり、Jevの推論結果ではありません。テストは外部APIを呼びません。
 
+## 自分のウォッチで使う
+
+ストアを使わず、個人設定を含めた実行ファイルを作成します。サイドロードしたアプリは、スマホのConnect IQアプリから設定を変更できません。[Garmin公式FAQ](https://forums.garmin.com/developer/connect-iq/w/wiki/4/new-developer-faq#app-settings)
+
+```sh
+test -f .personal.json || cp .personal.example.json .personal.json
+pnpm build:personal
+# この開発環境では bash scripts/dev.sh build:personal でも実行できます。
+```
+
+`.personal.json` の `relayUrl` が空なら、通信しない版を作ります。Jev連携を使うときは、自分のHTTPS中継先のURLを設定します。末尾の `/evaluate` はアプリが付けるため、設定には含めません。トークンは中継と同じ `.env` の `RELAY_TOKEN` を使います。JevのAPIキーは中継側だけに置き、ウォッチへ埋め込みません。
+
+| 個人設定 | 内容 |
+| --- | --- |
+| relayUrl | HTTPS中継先。空文字なら通信なし |
+| relayIntervalSeconds | 送信間隔。30〜600秒、初期値60秒 |
+
+ビルドには、下の「Forerunner 265向けにビルドする」で説明するSDK・Java・署名鍵が必要です。
+
+### Macから実機へ転送する
+
+1. Forerunner 265をデータ転送できるUSBケーブルでMacに接続します。Garmin Expressが起動していたら終了します。
+2. [OpenMTP](https://openmtp.ganeshrvel.com/)をインストールして開きます。Macからウォッチ内のファイルを扱うために使います。Finderにウォッチが表示されない場合も、OpenMTPで接続を確認してください。
+3. リポジトリ内の `ciq/build/FuelGuide-personal.prg` を、ウォッチ側の `GARMIN/APPS` フォルダーへコピーします。転送するのは、このPRGファイル1つです。
+4. 転送が完了してからUSB接続を解除します。
+5. ウォッチで `UP長押し → アクティビティ＆アプリ → ラン → ラン設定 → トレーニングページ` を開きます。
+6. カスタムデータページを追加し、レイアウトを1項目にします。データ項目の `Connect IQ → Fuel Guide` を選びます。表記はウォッチのソフトウェアによって異なる場合があります。
+
+Fuel Guideはラン画面に追加するデータ項目です。独立したアプリとして起動する形式ではありません。`relayUrl` が空のビルドでは、`RELAY OFF` の表示は正常です。Jev連携を使うには、HTTPS中継先を設定して再ビルド・再転送します。
+
+この転送手順は公式資料を基にしています。このプロジェクトでの実機転送はまだ未確認です。[Garmin公式のサイドロード案内](https://forums.garmin.com/developer/connect-iq/w/wiki/4/new-developer-faq)、[Forerunner 265のトレーニングページ設定](https://www8.garmin.com/manuals-apac/webhelp/forerunner265series/JA-JP/GUID-5FE174F6-2099-4194-AE6F-5806D91F94DF-2964.html)を参照してください。
+
+個人設定・生成したリソース・実行ファイルはGit管理から除外します。通信を有効にした実行ファイルには中継トークンが入るため、自分のウォッチへの転送に使ってください。設定変更後は再ビルド・再転送が必要です。
+
 ## Forerunner 265向けにビルドする
 
 1. [Garmin公式SDK Manager](https://developer.garmin.com/connect-iq/sdk/)でログインし、SDKとForerunner 265の機種データを取得します。機種IDは `fr265` です。
@@ -78,7 +112,7 @@ pnpm build:ciq
 
 ## ウォッチから通信するにはHTTPS中継が必要
 
-ローカルの `127.0.0.1` は、スマートフォンから見た開発用Macのアドレスにはなりません。実機テストでは、スマートフォンから到達できるHTTPSの中継先を用意し、CIQ設定にURLとRELAY_TOKENを入力します。HTTPS中継先の公開やトンネルの作成は、別途設定が必要です。
+ローカルの `127.0.0.1` は、スマートフォンから見た開発用Macのアドレスにはなりません。実機テストでは、スマートフォンから到達できるHTTPSの中継先を用意し、`.personal.json` のURLと `.env` のRELAY_TOKENを設定して自分用にビルドします。HTTPS中継先の公開やトンネルの作成は、別途設定が必要です。
 
 Jevで試す場合は、中継の.envに `JEV_MODE=jev` と `TYPESAFE_API_KEY` を設定して再起動します。これ以降は心拍・速度・ピッチ・経過時間とその集計がTypeSafeへ送信され、API利用料が発生します。位置情報・氏名・Garminアカウント情報は送信対象に含めません。中継はデータをファイル保存せず、通知制御用の状態をメモリ内に保持します。
 
@@ -105,6 +139,6 @@ Data Fieldは標準アクティビティ画面に追加する拡張表示、Stat
 
 ## 確認済みの範囲
 
-Node 26.9.0で型チェックと9件のテスト、SDK 9.2.0でForerunner 265向けビルドが成功しました。シミュレーターでは初期画面の表示を確認しています。実Jev API接続、実機転送、実走行、電池消費は未確認です。
+Node 26.9.0で型チェックと21件のテスト、SDK 9.2.0でForerunner 265向けビルドが成功しました。シミュレーターでは初期画面の表示を確認しています。実Jev API接続、実機転送、実走行、電池消費は未確認です。
 
 更新日: 2026-09-21

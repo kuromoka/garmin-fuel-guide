@@ -2,6 +2,15 @@
 set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+personal_build=false
+if [[ $# -gt 0 ]]; then
+  if [[ "$1" == "--personal" && $# -eq 1 ]]; then
+    personal_build=true
+  else
+    echo "Usage: $0 [--personal]" >&2
+    exit 2
+  fi
+fi
 sdk_home="${CIQ_SDK_HOME:-}"
 if [[ -x "$project_dir/.tools/java/Contents/Home/bin/java" ]]; then
   export PATH="$project_dir/.tools/java/Contents/Home/bin:$PATH"
@@ -44,6 +53,28 @@ fi
 
 output_dir="$project_dir/ciq/build"
 mkdir -p "$output_dir"
+if [[ "$personal_build" == true ]]; then
+  node_bin="node"
+  if [[ -x "$project_dir/.tools/node/bin/node" ]]; then
+    node_bin="$project_dir/.tools/node/bin/node"
+  fi
+  "$node_bin" "$project_dir/scripts/prepare-personal.ts"
+  umask 077
+  build_log="$output_dir/personal-build.log"
+  touch "$build_log"
+  chmod 600 "$build_log"
+  rm -f "$output_dir/FuelGuide-personal.prg"
+  if ! "$sdk_home/bin/monkeyc" \
+    -f "$output_dir/personal-project/monkey.jungle" \
+    -d fr265 \
+    -y "$developer_key" \
+    -o "$output_dir/FuelGuide-personal.prg" >"$build_log" 2>&1; then
+    echo "Personal build failed. See ciq/build/personal-build.log locally for details." >&2
+    exit 1
+  fi
+  echo "Personal build successful."
+  exit 0
+fi
 "$sdk_home/bin/monkeyc" \
   -f "$project_dir/ciq/monkey.jungle" \
   -d fr265 \

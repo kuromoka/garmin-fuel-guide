@@ -9,10 +9,11 @@
   },
   "scripts": {
     "start": "node --env-file-if-exists=.env relay/server.ts",
-    "test": "node --test relay/*.test.ts",
+    "test": "node --test relay/*.test.ts scripts/*.test.ts",
     "typecheck": "tsc --noEmit",
     "check": "pnpm typecheck && pnpm test",
-    "build:ciq": "bash scripts/build-ciq.sh"
+    "build:ciq": "bash scripts/build-ciq.sh",
+    "build:personal": "bash scripts/build-ciq.sh --personal"
   },
   "devDependencies": {
     "typescript": "7.0.2",
