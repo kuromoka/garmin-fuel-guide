@@ -1,0 +1,4 @@
+packages:
+  - .
+pmOnFail: download
+runtimeOnFail: download

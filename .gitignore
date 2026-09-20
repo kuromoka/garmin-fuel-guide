@@ -1,0 +1,30 @@
+node_modules/
+.env
+.env.*
+!.env.example
+*.der
+*.pem
+*.key
+ciq/bin/
+bin/
+.tools/
+.DS_Store
+
+ciq/build/
+
+# Local development records and imported agent templates
+/.claude/
+/CLAUDE.md
+/PROGRESS.md
+/feature_list.json
+
+# Credentials and runtime artifacts
+.dev.vars
+.dev.vars.*
+*.p12
+*.pfx
+credentials
+credentials.*
+*.log
+*.prg
+*.iq

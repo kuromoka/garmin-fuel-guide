@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+    <properties>
+        <property id="relayUrl" type="string"></property>
+        <property id="relayToken" type="string"></property>
+        <property id="relayIntervalSeconds" type="number">60</property>
+    </properties>
+</resources>

@@ -1,0 +1,21 @@
+{
+  "name": "garmin-fuel-guide",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.5.1",
+  "devEngines": {
+    "nodeVersion": "26.9.0"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env relay/server.ts",
+    "test": "node --test relay/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "pnpm typecheck && pnpm test",
+    "build:ciq": "bash scripts/build-ciq.sh"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "@types/node": "26.6.2"
+  }
+}
