@@ -10,6 +10,7 @@
         <string id="MoodSteady">いいリズム</string>
         <string id="MoodBouncy">はずむ</string>
         <string id="MoodFocused">集中</string>
+        <string id="MoodResting">おやすみ</string>
         <string id="ConfidencePrefix">確信度</string>
         <string id="StatusDemoNoApi">デモ・通信なし</string>
         <string id="StatusLocalDemo">デモ表示</string>

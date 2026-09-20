@@ -104,3 +104,35 @@ function expiredAndPausedLateResponsesAreIgnored(logger) {
     field.onJevResponse(200, choiceResponse("bouncy", 0.5), { "sessionId" => field.sessionId, "sequence" => 5 });
     return !field.fromJev && !field.sameText(field.characterMood, "bouncy");
 }
+
+class DisplayTestWeather extends WeatherContext {
+    function refresh(nowSeconds) {}
+    function updateMovement(info, running, nowSeconds) {}
+}
+class DisplayTestInfo extends TestInfo {
+    var timerTime; var timerState;
+    function initialize() { TestInfo.initialize(); timerTime = 20000; timerState = Toybox.Activity.TIMER_STATE_ON; }
+}
+(:test)
+function resumedTimerRestoresCachedCharacterUntilExpiry(logger) {
+    var field = new TestFuelGuideField();
+    field.weatherContext = new DisplayTestWeather();
+    field.nextRequestMs = 60000;
+    field.samples = [
+        { :time => 0, :heartRate => 120, :speed => 3.0, :cadence => 170 },
+        { :time => 5, :heartRate => 121, :speed => 3.0, :cadence => 170 },
+        { :time => 10, :heartRate => 122, :speed => 3.0, :cadence => 170 },
+        { :time => 15, :heartRate => 123, :speed => 3.0, :cadence => 170 }
+    ];
+    field.characterMood = "focused"; field.fromJev = true; field.characterExpiresSeconds = 100;
+    field.onTimerPause();
+    if (!field.sameText(field.displayStatus, "PAUSED")) { return false; }
+    var info = new DisplayTestInfo();
+    field.compute(info);
+    if (!field.fromJev || !field.sameText(field.displayStatus, "JEV")) { return false; }
+    field.onTimerStop();
+    if (!field.sameText(field.displayStatus, "PAUSED")) { return false; }
+    info.timerTime = 100000;
+    field.compute(info);
+    return !field.fromJev && field.sameText(field.displayStatus, "JEV STALE");
+}

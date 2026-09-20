@@ -10,6 +10,7 @@
         <string id="MoodSteady">STEADY</string>
         <string id="MoodBouncy">BOUNCY</string>
         <string id="MoodFocused">FOCUSED</string>
+        <string id="MoodResting">RESTING</string>
         <string id="ConfidencePrefix">JEV</string>
         <string id="StatusDemoNoApi">DEMO / NO API</string>
         <string id="StatusLocalDemo">LOCAL DEMO</string>

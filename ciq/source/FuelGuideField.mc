@@ -28,8 +28,8 @@ class FuelGuideField extends WatchUi.DataField {
         characterMood = "calm"; characterConfidence = null; fromJev = false; characterExpiresSeconds = 0; displayStatus = sameText(networkMode(), "jev") ? "JEV WAITING" : "DEMO / NO API"; buddyRenderer = new BuddyRenderer(); weatherContext = new WeatherContext();
     }
     function onTimerReset() { resetSession(); }
-    function onTimerStop() { invalidatePendingRequest(); weatherContext.clearMovement(); }
-    function onTimerPause() { invalidatePendingRequest(); weatherContext.clearMovement(); }
+    function onTimerStop() { invalidatePendingRequest(); weatherContext.clearMovement(); displayStatus = "PAUSED"; }
+    function onTimerPause() { invalidatePendingRequest(); weatherContext.clearMovement(); displayStatus = "PAUSED"; }
     function onTimerStart() { }
     function onTimerResume() { }
 
@@ -41,11 +41,12 @@ class FuelGuideField extends WatchUi.DataField {
         var wallSeconds = wallClockSeconds();
         weatherContext.refresh(wallSeconds); weatherContext.updateMovement(info, running, wallSeconds);
         if (!running) { invalidatePendingRequest(); displayStatus = "PAUSED"; return; }
+        if (sameText(displayStatus, "PAUSED")) { displayStatus = fromJev ? "JEV" : "JEV WAITING"; }
         if (lastSampleSeconds == null || elapsed - lastSampleSeconds >= SAMPLE_PERIOD_SECONDS) { appendSample(info, elapsed); lastSampleSeconds = elapsed; }
         expireCharacterIfNeeded(elapsed);
         checkTimeout(); requestIfDue(info, elapsed);
     }
-    function onUpdate(dc) { var elapsed = lastTimerSeconds == null ? 0 : lastTimerSeconds; if (!sameText(networkMode(), "jev")) { elapsed = nowMs() / 1000; showDemo(elapsed); } buddyRenderer.draw(dc, characterMood, characterConfidence, displayStatus, fromJev, elapsed, weatherContext.snapshot(wallClockSeconds())); }
+    function onUpdate(dc) { var elapsed = lastTimerSeconds == null ? 0 : lastTimerSeconds; if (!sameText(networkMode(), "jev")) { showDemo(elapsed); } buddyRenderer.draw(dc, characterMood, characterConfidence, displayStatus, fromJev, elapsed, weatherContext.snapshot(wallClockSeconds())); }
     function secondsFromInfo(info) { return info.timerTime == null ? 0 : info.timerTime / 1000; }
     function nowMs() { return System.getTimer(); }
     function wallClockSeconds() { return Time.now().value(); }
@@ -66,7 +67,7 @@ class FuelGuideField extends WatchUi.DataField {
         try { sendRequest(body, headers, options); } catch (ex) { inFlight = false; pendingSinceMs = null; displayStatus = "JEV ERROR"; }
     }
     function sendRequest(body, headers, options) { Communications.makeWebRequest(JEV_URL, body, options, method(:onJevResponse)); }
-    function showDemo(elapsed) { var moods = ["calm", "steady", "bouncy", "focused"]; characterMood = moods[(elapsed / 8).toNumber() % 4]; characterConfidence = null; fromJev = false; displayStatus = "DEMO / NO API"; }
+    function showDemo(elapsed) { characterMood = "calm"; characterConfidence = null; fromJev = false; displayStatus = "DEMO / NO API"; }
     function ready(info, elapsed) { return samples.size() >= 4 && elapsed - samples[0][:time] >= 15 && (inRange(info.currentHeartRate, 20, 250) || inRange(info.currentSpeed, 0, 15) || inRange(info.currentCadence, 0, 300)); }
     function observedState(info, elapsed) { var environment = weatherContext.snapshot(wallClockSeconds()); return "schemaVersion=1;sessionId=" + sessionId + ";sequence=" + sequence + ";elapsedSeconds=" + elapsed + ";heartRate=" + observedNumber(info.currentHeartRate, 20, 250) + ";speedMps=" + observedNumber(info.currentSpeed, 0, 15) + ";cadenceRpm=" + observedNumber(info.currentCadence, 0, 300) + ";sampleCount=" + samples.size() + ";windowSeconds=" + (samples.size() > 0 ? elapsed - samples[0][:time] : 0) + ";recentSamples=" + recentSamplesText() + ";temperatureC=" + environmentNumber(environment["temperatureC"], -100, 100) + ";humidityPercent=" + environmentNumber(environment["humidityPercent"], 0, 100) + ";windSpeedMps=" + environmentNumber(environment["windSpeedMps"], 0, 100) + ";windFromDeg=" + environmentNumber(environment["windFromDeg"], 0, 360) + ";weatherAgeSeconds=" + environmentNumber(environment["weatherAgeSeconds"], 0, 31536000) + ";courseDeg=" + environmentNumber(environment["courseDeg"], 0, 360) + ";relativeWindFromDeg=" + environmentNumber(environment["relativeWindFromDeg"], 0, 360); }
     function textOf(value) { return value == null ? "null" : value.toString(); }
