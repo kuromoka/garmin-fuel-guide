@@ -1,4 +1,5 @@
 {
-  "relayUrl": "",
-  "relayIntervalSeconds": 60
+  "networkMode": "offline",
+  "requestIntervalSeconds": 60,
+  "maxCallsPerSession": 120
 }

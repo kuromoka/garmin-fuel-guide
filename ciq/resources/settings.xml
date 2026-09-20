@@ -1,14 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <resources>
     <settings>
-        <setting propertyKey="@Properties.relayUrl" title="@Strings.RelayUrlTitle" prompt="@Strings.RelayUrlPrompt">
-            <settingConfig type="url"/>
-        </setting>
-        <setting propertyKey="@Properties.relayToken" title="@Strings.RelayTokenTitle" prompt="@Strings.RelayTokenPrompt">
-            <settingConfig type="password"/>
-        </setting>
-        <setting propertyKey="@Properties.relayIntervalSeconds" title="@Strings.RelayIntervalTitle" prompt="@Strings.RelayIntervalPrompt">
+        <setting propertyKey="@Properties.requestIntervalSeconds" title="@Strings.RequestIntervalTitle" prompt="@Strings.RequestIntervalPrompt">
             <settingConfig type="numeric" min="30" max="600"/>
+        </setting>
+        <setting propertyKey="@Properties.maxCallsPerSession" title="@Strings.MaxCallsTitle" prompt="@Strings.MaxCallsPrompt">
+            <settingConfig type="numeric" min="1" max="120"/>
         </setting>
     </settings>
 </resources>

@@ -1,12 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <resources>
     <strings>
-        <string id="AppName">Fuel Guide</string>
-        <string id="RelayUrlTitle">Relay URL</string>
-        <string id="RelayUrlPrompt">HTTPS relay base URL</string>
-        <string id="RelayTokenTitle">Relay token</string>
-        <string id="RelayTokenPrompt">Optional bearer token</string>
-        <string id="RelayIntervalTitle">Relay interval</string>
-        <string id="RelayIntervalPrompt">Seconds, minimum 30</string>
+        <string id="AppName">Jev Buddy</string>
+        <string id="RequestIntervalTitle">Request interval</string>
+        <string id="RequestIntervalPrompt">Seconds, minimum 30</string>
+        <string id="MaxCallsTitle">Maximum calls</string>
+        <string id="MaxCallsPrompt">Calls per activity, maximum 120</string>
+        <string id="MoodCalm">CALM</string>
+        <string id="MoodSteady">STEADY</string>
+        <string id="MoodBouncy">BOUNCY</string>
+        <string id="MoodFocused">FOCUSED</string>
+        <string id="ConfidencePrefix">JEV</string>
+        <string id="StatusDemoNoApi">DEMO / NO API</string>
+        <string id="StatusLocalDemo">LOCAL DEMO</string>
+        <string id="StatusWaiting">WAITING</string>
+        <string id="StatusPaused">PAUSED</string>
+        <string id="StatusJevWaiting">JEV WAITING</string>
+        <string id="StatusJevNoKey">JEV NO KEY</string>
+        <string id="StatusJevDisabled">JEV DISABLED</string>
+        <string id="StatusJevLimit">JEV LIMIT</string>
+        <string id="StatusJevTimeout">JEV TIMEOUT</string>
+        <string id="StatusJevRateLimit">JEV RATE LIMIT</string>
+        <string id="StatusJevError">JEV ERROR</string>
+        <string id="StatusJevStale">JEV STALE</string>
     </strings>
 </resources>

@@ -1,15 +1,9 @@
-# Fuel Guide CIQ data field
+# Jev Buddy CIQ data field
 
-Experimental Connect IQ data field for Forerunner 265. Garmin invokes `compute()` once per second; the field keeps a five-second, 120-sample rolling window and posts an optional relay payload every 60 seconds (minimum configurable interval: 30 seconds).
+A playful Jev experiment for a personal Forerunner 265. A vector character changes color, face, and pose according to a Jev Choice: calm, steady, bouncy, or focused. This is not a fatigue or nutrition assessment.
 
-For personal sideloading, run `pnpm build:personal` using the gitignored `.personal.json` and the relay token from `.env`. The mobile Connect IQ settings screen does not work for sideloaded apps. The standard store build can use Connect IQ app settings. The URL and token default to empty, so no network request is made until configured. The field always sends `temperatureC: null`.
+Default `offline` mode cycles the four visual moods with a visible demo label and makes no requests. In `jev` mode, Garmin Connect on the phone connects directly to the TypeSafe API. No self-hosted relay is needed. The character is drawn locally without per-frame API calls.
 
-The field only presents experimental trend and relay candidate text. Relay responses show `MOCK` or `JEV` mode. It does not make audio notifications, clinical claims, or automatic alarms.
+`pnpm build:personal` reads gitignored `.personal.json` and `TYPESAFE_API_KEY` from the environment or `.env`. Its PRG contains the key and must not be distributed. Request interval: 30–600 seconds, default 60. Session budget: 1–120 attempts, default 120, including failures. Start with one attempt for a live API smoke test.
 
-Build with:
-
-```sh
-CIQ_SDK_HOME=/path/to/connectiq-sdk \
-CIQ_DEVELOPER_KEY=/path/to/developer_key \
-./scripts/build-ciq.sh
-```
+See the root README for setup and USB transfer. `pnpm build:ciq` makes a credential-free demo build. `pnpm test:ciq` runs Monkey C tests on the simulator without calling the real API. The PRG filename retains the original FuelGuide name.

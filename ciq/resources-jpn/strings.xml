@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+    <strings>
+        <string id="AppName">Jev Buddy</string>
+        <string id="RequestIntervalTitle">送信間隔</string>
+        <string id="RequestIntervalPrompt">秒（最低30秒）</string>
+        <string id="MaxCallsTitle">送信回数上限</string>
+        <string id="MaxCallsPrompt">1回の運動で最大120回</string>
+        <string id="MoodCalm">のんびり</string>
+        <string id="MoodSteady">いいリズム</string>
+        <string id="MoodBouncy">はずむ</string>
+        <string id="MoodFocused">集中</string>
+        <string id="ConfidencePrefix">確信度</string>
+        <string id="StatusDemoNoApi">デモ・通信なし</string>
+        <string id="StatusLocalDemo">デモ表示</string>
+        <string id="StatusWaiting">待機中</string>
+        <string id="StatusPaused">一時停止</string>
+        <string id="StatusJevWaiting">応答待ち</string>
+        <string id="StatusJevNoKey">キー未設定</string>
+        <string id="StatusJevDisabled">通信停止</string>
+        <string id="StatusJevLimit">回数上限</string>
+        <string id="StatusJevTimeout">時間切れ</string>
+        <string id="StatusJevRateLimit">送信待ち</string>
+        <string id="StatusJevError">通信エラー</string>
+        <string id="StatusJevStale">更新待ち</string>
+    </strings>
+</resources>

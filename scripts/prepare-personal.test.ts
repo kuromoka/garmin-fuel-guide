@@ -1,82 +1,16 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { loadPersonalSettings, preparePersonalProject } from "./prepare-personal.ts";
-
 const repoRoot = path.resolve(import.meta.dirname, "..");
-
-async function fixture(config: unknown, env = "TYPESAFE_API_KEY=do-not-copy\nRELAY_TOKEN=from-dotenv-token\n"): Promise<string> {
-  const dir = await mkdtemp(path.join(os.tmpdir(), "fuel-guide-personal-"));
-  await writeFile(path.join(dir, ".personal.json"), JSON.stringify(config));
-  await writeFile(path.join(dir, ".env"), env);
-  const ciq = path.join(dir, "ciq");
-  for (const item of ["source", "resources", "manifest.xml", "monkey.jungle"]) {
-    const source = path.join(repoRoot, "ciq", item);
-    const target = path.join(ciq, item);
-    const { cp } = await import("node:fs/promises");
-    await cp(source, target, { recursive: true });
-  }
-  return dir;
-}
-
-test("enabled build escapes values and keeps source properties unchanged", async (t) => {
-  const dir = await fixture({ relayUrl: "https://relay.example.test/api/", relayIntervalSeconds: 60 }, "RELAY_TOKEN=xml&<>'\"token\nTYPESAFE_API_KEY=do-not-copy\n");
-  t.after(() => rm(dir, { recursive: true, force: true }));
-  await preparePersonalProject(dir, {});
-  const generated = await readFile(path.join(dir, "ciq/build/personal-project/resources/properties.xml"), "utf8");
-  const original = await readFile(path.join(dir, "ciq/resources/properties.xml"), "utf8");
-  assert.match(generated, /https:\/\/relay\.example\.test\/api/);
-  assert.match(generated, /xml&amp;&lt;&gt;&apos;&quot;token/);
-  assert.doesNotMatch(generated, /TYPESAFE_API_KEY|do-not-copy/);
-  assert.match(original, /<property id="relayUrl" type="string"><\/property>/);
-  assert.equal((await stat(path.join(dir, "ciq/build/personal-project"))).mode & 0o777, 0o700);
-  assert.equal((await stat(path.join(dir, "ciq/build/personal-project/resources/properties.xml"))).mode & 0o777, 0o600);
-});
-
-test("offline build ignores relay token", async (t) => {
-  const dir = await fixture({ relayUrl: "", relayIntervalSeconds: 30 }, "RELAY_TOKEN=\u0000invalid\n");
-  t.after(() => rm(dir, { recursive: true, force: true }));
-  await preparePersonalProject(dir, {});
-  const generated = await readFile(path.join(dir, "ciq/build/personal-project/resources/properties.xml"), "utf8");
-  assert.match(generated, /relayToken" type="string"><\/property>/);
-});
-
-test("process RELAY_TOKEN takes priority over .env", async (t) => {
-  const dir = await fixture({ relayUrl: "https://relay.example.test", relayIntervalSeconds: 600 });
-  t.after(() => rm(dir, { recursive: true, force: true }));
-  const settings = await loadPersonalSettings(dir, { RELAY_TOKEN: "process-token" });
-  assert.equal(settings.relayToken, "process-token");
-});
-
-for (const [name, config] of [
-  ["rejects malformed config", "not-json"],
-  ["rejects non-HTTPS URL", { relayUrl: "http://relay.example.test", relayIntervalSeconds: 60 }],
-  ["rejects URL credentials", { relayUrl: "https://user@relay.example.test", relayIntervalSeconds: 60 }],
-  ["rejects URL query", { relayUrl: "https://relay.example.test?", relayIntervalSeconds: 60 }],
-  ["rejects URL fragment", { relayUrl: "https://relay.example.test#", relayIntervalSeconds: 60 }],
-  ["rejects invalid interval", { relayUrl: "", relayIntervalSeconds: 29 }],
-  ["rejects null config", null],
-] as const) {
-  test(name, async (t) => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), "fuel-guide-personal-"));
-    t.after(() => rm(dir, { recursive: true, force: true }));
-    await writeFile(path.join(dir, ".personal.json"), typeof config === "string" ? config : JSON.stringify(config));
-    await assert.rejects(() => loadPersonalSettings(dir, {}), /personal\.json/);
-  });
-}
-
-test("requires a token for an enabled relay without exposing its value", async (t) => {
-  const dir = await fixture({ relayUrl: "https://relay.example.test", relayIntervalSeconds: 60 }, "TYPESAFE_API_KEY=do-not-copy\n");
-  t.after(() => rm(dir, { recursive: true, force: true }));
-  await assert.rejects(() => preparePersonalProject(dir, {}), /RELAY_TOKEN is required/);
-});
-
-test("rejects token characters invalid in XML before generating output", async (t) => {
-  const dir = await fixture({ relayUrl: "https://relay.example.test", relayIntervalSeconds: 60 }, "RELAY_TOKEN=bad\uFFFEtoken\n");
-  t.after(() => rm(dir, { recursive: true, force: true }));
-  await assert.rejects(() => preparePersonalProject(dir, {}), /invalid in XML/);
-  const original = await readFile(path.join(dir, "ciq/resources/properties.xml"), "utf8");
-  assert.match(original, /<property id="relayToken" type="string"><\/property>/);
-});
+const jev = { networkMode: "jev", requestIntervalSeconds: 60, maxCallsPerSession: 120 }; const offline = { networkMode: "offline", requestIntervalSeconds: 30, maxCallsPerSession: 1 };
+async function fixture(config: unknown, env = "TYPESAFE_API_KEY=from-dotenv-key\nRELAY_TOKEN=must-not-copy\n") { const dir = await mkdtemp(path.join(os.tmpdir(), "fuel-guide-personal-")); await writeFile(path.join(dir, ".personal.json"), JSON.stringify(config)); await writeFile(path.join(dir, ".env"), env); for (const item of ["source", "resources", "resources-jpn", "manifest.xml", "monkey.jungle"]) await cp(path.join(repoRoot, "ciq", item), path.join(dir, "ciq", item), { recursive: true }); return dir; }
+test("Jev build escapes key and keeps source properties unchanged", async (t) => { const dir = await fixture(jev, "TYPESAFE_API_KEY=key&<>'\"value\nRELAY_TOKEN=must-not-copy\n"); t.after(() => rm(dir, { recursive: true, force: true })); await preparePersonalProject(dir, {}); const generated = await readFile(path.join(dir, "ciq/build/personal-project/resources/properties.xml"), "utf8"), original = await readFile(path.join(dir, "ciq/resources/properties.xml"), "utf8"); assert.match(generated, /key&amp;&lt;&gt;&apos;&quot;value/); assert.match(generated, /networkMode" type="string">jev/); assert.doesNotMatch(generated, /RELAY_TOKEN|must-not-copy/); assert.match(original, /networkMode" type="string">offline/); assert.equal((await stat(path.join(dir, "ciq/build/personal-project"))).mode & 0o777, 0o700); assert.equal((await stat(path.join(dir, "ciq/build/personal-project/resources/properties.xml"))).mode & 0o777, 0o600); });
+test("offline build never reads API key or relay token", async (t) => { const dir = await fixture(offline, "TYPESAFE_API_KEY=bad key\nRELAY_TOKEN=must-not-copy\n"); t.after(() => rm(dir, { recursive: true, force: true })); await preparePersonalProject(dir, {}); const generated = await readFile(path.join(dir, "ciq/build/personal-project/resources/properties.xml"), "utf8"); assert.match(generated, /jevApiKey" type="string"><\/property>/); assert.doesNotMatch(generated, /must-not-copy|bad key/); });
+test("personal project includes Japanese resources with the English string IDs", async (t) => { const dir = await fixture(offline); t.after(() => rm(dir, { recursive: true, force: true })); await preparePersonalProject(dir, {}); const english = await readFile(path.join(dir, "ciq/resources/strings.xml"), "utf8"), japanese = await readFile(path.join(dir, "ciq/build/personal-project/resources-jpn/strings.xml"), "utf8"); const ids = (value: string) => [...value.matchAll(/<string id="([^"]+)"/g)].map((match) => match[1]).sort(); assert.deepEqual(ids(japanese), ids(english)); assert.doesNotMatch(japanese, /from-dotenv-key|must-not-copy/); });
+test("process API key takes priority over .env", async (t) => { const dir = await fixture(jev); t.after(() => rm(dir, { recursive: true, force: true })); assert.equal((await loadPersonalSettings(dir, { TYPESAFE_API_KEY: "process-key" })).jevApiKey, "process-key"); });
+for (const [name, config, expected] of [["rejects malformed config", "not-json", /personal\.json/], ["rejects null config", null, /must contain an object/], ["rejects unknown mode", { ...offline, networkMode: "relay" }, /networkMode/], ["rejects short interval", { ...offline, requestIntervalSeconds: 29 }, /requestIntervalSeconds/], ["rejects fractional interval", { ...offline, requestIntervalSeconds: 60.5 }, /requestIntervalSeconds/], ["rejects excessive interval", { ...offline, requestIntervalSeconds: 601 }, /requestIntervalSeconds/], ["rejects zero quota", { ...offline, maxCallsPerSession: 0 }, /maxCallsPerSession/], ["rejects excessive quota", { ...offline, maxCallsPerSession: 121 }, /maxCallsPerSession/], ["rejects legacy relay configuration", { relayUrl: "", relayIntervalSeconds: 60 }, /retired relay configuration/]] as const) test(name, async (t) => { const dir = await mkdtemp(path.join(os.tmpdir(), "fuel-guide-personal-")); t.after(() => rm(dir, { recursive: true, force: true })); await writeFile(path.join(dir, ".personal.json"), typeof config === "string" ? config : JSON.stringify(config)); await assert.rejects(() => loadPersonalSettings(dir, {}), expected); });
+test("requires key for Jev without exposing it", async (t) => { const dir = await fixture(jev, "RELAY_TOKEN=must-not-copy\n"); t.after(() => rm(dir, { recursive: true, force: true })); await assert.rejects(() => preparePersonalProject(dir, {}), /TYPESAFE_API_KEY is required/); });
+test("rejects invalid bearer key characters", async (t) => { const dir = await fixture(jev, "TYPESAFE_API_KEY=bad key\n"); t.after(() => rm(dir, { recursive: true, force: true })); await assert.rejects(() => preparePersonalProject(dir, {}), /printable ASCII/); });

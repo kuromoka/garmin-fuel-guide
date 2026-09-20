@@ -1,5 +1,5 @@
 {
-  "name": "garmin-fuel-guide",
+  "name": "garmin-jev-buddy",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "check": "pnpm typecheck && pnpm test",
     "build:ciq": "bash scripts/build-ciq.sh",
-    "build:personal": "bash scripts/build-ciq.sh --personal"
+    "build:personal": "bash scripts/build-ciq.sh --personal",
+    "test:ciq": "bash scripts/test-ciq.sh"
   },
   "devDependencies": {
     "typescript": "7.0.2",

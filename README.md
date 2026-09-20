@@ -1,55 +1,51 @@
-# Fuel Guide — Forerunner 265で補給の判断材料を集める
+# Jev Buddy — 走りをキャラクターにする実験
 
-標準のラン記録に追加するConnect IQのデータフィールドと、Jev APIを呼ぶローカル中継サーバーの試作です。心拍・速度・ピッチの変化を集計し、補給計画を見直す候補をウォッチに表示します。
+Forerunner 265のラン画面に、小さなキャラクターを表示するConnect IQデータフィールドです。心拍・速度・ピッチをJevへ渡し、返ってきた「雰囲気」に合わせて色・表情・ポーズを変えます。
 
-**初期状態はモックです。Jevへの送信や課金は発生しません。** 疲労や脱水の診断、30分以内のガス欠確率、補給量の決定には使えません。画面の候補は実験用の参考表示です。
+補給の判断や疲労診断ではなく、**センサーデータに対するJevの反応を見て楽しむ試作**です。自分用のUSB転送で使い、中継サーバーもストア公開も必要ありません。
 
-当面は自分のForerunner 265へUSB経由で入れる使い方を前提にしています。ストア公開は不要です。中継サーバーは「ローカルで試す」、ウォッチへの導入は「自分のウォッチで使う」を参照してください。
+**初期状態は通信OFFのデモです。APIキーなしでキャラクターを見られます。** デモでは4種類を順に表示し、Jevが選んだ結果とは区別します。
 
-## データはウォッチで集計し、中継経由でJevに送る
+## キャラクターの雰囲気
 
-```text
-Forerunner 265 / 標準のラン記録
-  └─ CIQ Data Field: 毎秒取得 → 5秒ごとに保存 → 最大10分の集計
-       └─ Garmin Connect / スマートフォンのネット接続
-            └─ 自分のHTTPS中継サーバー: 初期値60秒間隔
-                 └─ TypeSafe Jev API
-            ← 検証済みの応答だけをウォッチの参考表示に反映
-```
-
-ウォッチ側はMonkey C、中継側はTypeScriptです。Web UIを持たないため、React・Vite+は使用していません。依存関係とNodeの指定はpackage.jsonで管理します。
-
-| データ | 扱い |
+| Jevの選択 | 表現 |
 | --- | --- |
-| 心拍 | Activity.Info.currentHeartRate、bpm。欠損はnull |
-| 速度 | currentSpeed、m/s。画面ではペースに換算可能 |
-| ピッチ | currentCadence、Garmin APIのrpmを保持。推測で2倍にしない |
-| 経過時間 | timerTime、ミリ秒を秒に変換 |
-| 気温 | 初版はnull。手首温度を外気温として代用しない |
-| 心拍ドリフト | 最初と直近の区間で心拍/速度の比を比較。坂や気温などの影響を分離した指標ではない |
-| ピッチの変動 | 変動係数（標準偏差÷平均）。欠損を0として計算しない |
+| calm | 青い体、目を細めたのんびりした顔 |
+| steady | 緑の体、足を交互に動かす姿 |
+| bouncy | 黄色い体、手を上げて弾む姿 |
+| focused | ピンクの体、眉を寄せた集中顔 |
 
-JevのScoreは記述した段階の評点で、発症確率ではありません。Noulは0〜1の値であり、別のconfidenceフィールドはありません。この試作では0.85を超える候補が続いたときに表示を許可し、15分間は次の通知候補を抑えます。摂取履歴や個人の補給計画は未入力なので、ジェルの個数や水分量は指示しません。
+JevのChoiceで4種類から1つを選びます。実APIの応答では、選択した雰囲気と確信度を表示します。確信度はキャラクター選択に対する値で、健康状態の確率ではありません。
 
-## ローカルで試す
+```mermaid
+flowchart LR
+    A["心拍・速度・ピッチ<br/>現在値と直近6サンプル"] --> B["スマホ経由でJevへ<br/>State ＋ 4択のChoice"]
+    B --> C["雰囲気と確信度<br/>calm / steady / bouncy / focused"]
+    C --> D["ウォッチで描画<br/>表情・色・ポーズを変更"]
+```
 
-Nodeとpnpmの指定バージョンはpackage.jsonを参照してください。Garmin SDK・Java・Node・pnpm本体はこのリポジトリに含めていません。各ツールをインストールしてから、以下のコマンドで起動します。
+[何を判定材料にして、Jevをどう使うか](docs/how-jev-works.md)に、送信条件・実際の選択肢・応答例をまとめています。
+
+走行中は、ネット接続したスマートフォンを携帯する前提です。描画はウォッチ上で行い、アニメーションのフレームごとにAPIを呼ぶことはありません。動きはデータフィールドの更新頻度に合わせた、ゆっくりしたものです。
+
+## 表示言語
+
+ウォッチの言語が日本語なら、雰囲気・通信状態・確信度を日本語で表示します。英語表示も残しています。Jevへ送る選択肢のIDは共通で、表示言語によって判定内容は変えません。
+
+## 開発環境を用意する
+
+Nodeとpnpmの指定バージョンはpackage.jsonを参照してください。Garmin SDK・Java・Node・pnpm本体はこのリポジトリに含めていません。
 
 ```sh
-git clone https://github.com/kuromoka/garmin-fuel-guide.git
-cd garmin-fuel-guide
+git clone https://github.com/kuromoka/garmin-jev-buddy.git
+cd garmin-jev-buddy
 pnpm install
-test -f .env || cp .env.example .env
-```
-
-.envのRELAY_TOKENに自分で生成した値を設定します。例えば `openssl rand -hex 24` の出力を使えます。JEV_MODEはmockのままにします。
-
-```sh
 pnpm check
-pnpm start
+# SDKと署名鍵の準備後、CIQシミュレーターで通信制御をテストする
+pnpm test:ciq
 ```
 
-別のターミナルで `curl http://127.0.0.1:8787/health` を実行します。モックの応答は通信と表示を試すための固定ルールであり、Jevの推論結果ではありません。テストは外部APIを呼びません。
+テストは外部APIを呼びません。ウォッチ向けのビルドには、下の「Forerunner 265向けにビルドする」で説明するSDK・Java・署名鍵が必要です。
 
 ## 自分のウォッチで使う
 
@@ -61,14 +57,25 @@ pnpm build:personal
 # この開発環境では bash scripts/dev.sh build:personal でも実行できます。
 ```
 
-`.personal.json` の `relayUrl` が空なら、通信しない版を作ります。Jev連携を使うときは、自分のHTTPS中継先のURLを設定します。末尾の `/evaluate` はアプリが付けるため、設定には含めません。トークンは中継と同じ `.env` の `RELAY_TOKEN` を使います。JevのAPIキーは中継側だけに置き、ウォッチへ埋め込みません。
+`.personal.json` の `networkMode` が `offline` なら通信しません。Jevに接続するときは、次の設定へ変更します。
+
+```json
+{
+  "networkMode": "jev",
+  "requestIntervalSeconds": 60,
+  "maxCallsPerSession": 120
+}
+```
+
+`test -f .env || cp .env.example .env` でローカル設定ファイルを用意し、`.env` の `TYPESAFE_API_KEY` に自分のAPIキーを設定します。チャットやGitHubへキーを貼る必要はありません。環境変数にも同名の値がある場合は、環境変数を優先します。その後、`pnpm build:personal` を実行します。初回の通信確認では `maxCallsPerSession` を `1` にすると、送信を1回に制限できます。
 
 | 個人設定 | 内容 |
 | --- | --- |
-| relayUrl | HTTPS中継先。空文字なら通信なし |
-| relayIntervalSeconds | 送信間隔。30〜600秒、初期値60秒 |
+| networkMode | `offline`（通信OFF）または `jev`（実API） |
+| requestIntervalSeconds | 送信間隔。30〜600秒、初期値60秒 |
+| maxCallsPerSession | セッション内の送信回数上限。1〜120回、初期値120回。失敗も数えます |
 
-ビルドには、下の「Forerunner 265向けにビルドする」で説明するSDK・Java・署名鍵が必要です。
+以前の `relayUrl` / `relayIntervalSeconds` は使いません。旧形式の `.personal.json` がある場合は、上の形式へ書き換えます。APIキーは個人用ビルドのPRGへ埋め込まれます。`.env`、`.personal.json`、生成したPRGはGit管理外です。PRGは自分のウォッチへの転送だけに使い、公開しないでください。
 
 ### Macから実機へ転送する
 
@@ -77,13 +84,13 @@ pnpm build:personal
 3. リポジトリ内の `ciq/build/FuelGuide-personal.prg` を、ウォッチ側の `GARMIN/APPS` フォルダーへコピーします。転送するのは、このPRGファイル1つです。
 4. 転送が完了してからUSB接続を解除します。
 5. ウォッチで `UP長押し → アクティビティ＆アプリ → ラン → ラン設定 → トレーニングページ` を開きます。
-6. カスタムデータページを追加し、レイアウトを1項目にします。データ項目の `Connect IQ → Fuel Guide` を選びます。表記はウォッチのソフトウェアによって異なる場合があります。
+6. カスタムデータページを追加し、レイアウトを1項目にします。データ項目の `Connect IQ → Jev Buddy` を選びます。表記はウォッチのソフトウェアによって異なる場合があります。
 
-Fuel Guideはラン画面に追加するデータ項目です。独立したアプリとして起動する形式ではありません。`relayUrl` が空のビルドでは、`RELAY OFF` の表示は正常です。Jev連携を使うには、HTTPS中継先を設定して再ビルド・再転送します。
+Jev Buddyはラン画面に追加するデータ項目です。独立したアプリとして起動する形式ではありません。通信OFFのビルドでは、`DEMO / NO API` と表示し、4種類のキャラクターを順に見せます。Jev連携を使うには、個人設定とAPIキーを設定して再ビルド・再転送します。
 
 この転送手順は公式資料を基にしています。このプロジェクトでの実機転送はまだ未確認です。[Garmin公式のサイドロード案内](https://forums.garmin.com/developer/connect-iq/w/wiki/4/new-developer-faq)、[Forerunner 265のトレーニングページ設定](https://www8.garmin.com/manuals-apac/webhelp/forerunner265series/JA-JP/GUID-5FE174F6-2099-4194-AE6F-5806D91F94DF-2964.html)を参照してください。
 
-個人設定・生成したリソース・実行ファイルはGit管理から除外します。通信を有効にした実行ファイルには中継トークンが入るため、自分のウォッチへの転送に使ってください。設定変更後は再ビルド・再転送が必要です。
+個人設定・生成したリソース・実行ファイルはGit管理から除外します。通信を有効にした実行ファイルにはJevのAPIキーが入ります。設定変更後は再ビルド・再転送が必要です。
 
 ## Forerunner 265向けにビルドする
 
@@ -110,35 +117,29 @@ pnpm build:ciq
 
 生成先は `ciq/build/FuelGuide.prg` です。実機への転送とラン画面への追加は、ビルド成功後に行います。SDKのシミュレーターで先に確認し、実機では1フィールドのデータ画面に追加して表示を確認してください。署名鍵やAPIキーをリポジトリにコミットしないでください。
 
-## ウォッチから通信するにはHTTPS中継が必要
+## Jevへ送るデータとタイミング
 
-ローカルの `127.0.0.1` は、スマートフォンから見た開発用Macのアドレスにはなりません。実機テストでは、スマートフォンから到達できるHTTPSの中継先を用意し、`.personal.json` のURLと `.env` のRELAY_TOKENを設定して自分用にビルドします。HTTPS中継先の公開やトンネルの作成は、別途設定が必要です。
+15〜20秒ほどのサンプルが集まり、現在の心拍・速度・ピッチのいずれかが取得できたら、初回の送信を試みます。その後は設定した間隔で新しいデータを送ります。走行タイマーの停止中は送信しません。
 
-Jevで試す場合は、中継の.envに `JEV_MODE=jev` と `TYPESAFE_API_KEY` を設定して再起動します。これ以降は心拍・速度・ピッチ・経過時間とその集計がTypeSafeへ送信され、API利用料が発生します。位置情報・氏名・Garminアカウント情報は送信対象に含めません。中継はデータをファイル保存せず、通知制御用の状態をメモリ内に保持します。
+送るのは経過時間、心拍、速度、ピッチと直近6サンプルの履歴です。取得できない値は不明として扱います。位置情報・氏名・Garminアカウント情報は送りません。送信先は `https://api.typesafe.ai/v1/systemone` に固定しています。`networkMode: "jev"` ではTypeSafeへのデータ送信とAPI利用料が発生します。
 
-通信の最短間隔は30秒、Jev呼び出しは1プロセス最大120回です。失敗時の自動再試行を避け、古い応答や順序の逆転した応答から通知候補を作らないようにしています。上限は研究用の設定であり、30秒や60秒の間隔を生理学的に検証したものではありません。
+同時に送るリクエストは1つに制限します。失敗も送信回数へ数え、同じデータを即座に再送しません。遅れた応答や一時停止前の応答は表示へ反映しません。回数上限はアプリ再起動などでリセットされるため、アカウント全体の課金上限にはなりません。
 
-## 初版に含まれないもの
+## 開発メモ
 
-- 外気温の取得、摂取量・補給時刻の記録、個人の補給計画との照合
-- イヤホンへの音声案内、振動による通知、給水所までの地理的なルート案内
-- 校正済みのガス欠確率、危険度診断、オフラインで動くJevモデル
-- 公開サーバーへのデプロイ、CIQストア公開、電池消費の実測
+ウォッチ側はMonkey C、個人ビルドの準備はTypeScriptです。`pnpm check` で型チェックとNodeのテスト、`pnpm test:ciq` でシミュレーター上のMonkey Cテストを実行します。テストから実APIは呼びません。
 
-## 仕様を確認する
+PRG名は以前のFuel Guideから引き継いでいます。`relay/` は以前の補給ガイド試作の比較用コードで、現在のキャラクターアプリは使いません。
 
-- [Garmin DataField — 毎秒のcompute](https://developer.garmin.com/connect-iq/api-docs/Toybox/WatchUi/DataField.html)
-- [Garmin Activity.Info — センサー値と単位](https://developer.garmin.com/connect-iq/api-docs/Toybox/Activity/Info.html)
-- [Jev公式発表](https://typesafe.ai/blog/introducing-system-one-models-and-jev)
-- [TypeSafe Quick start — リクエストと応答](https://docs.typesafe.ai/introduction/quickstart)
-- [Score](https://docs.typesafe.ai/primitives/score) / [Noul](https://docs.typesafe.ai/primitives/noul)
+## 参考
 
-Data Fieldは標準アクティビティ画面に追加する拡張表示、StateはJevへ渡す評価対象データ、relayはウォッチとJevの間で認証・検証を行う中継です。
+- [Jev Quick start](https://docs.typesafe.ai/introduction/quickstart)
+- [Choice](https://docs.typesafe.ai/primitives/choice)
+- [Garmin Communications](https://developer.garmin.com/connect-iq/api-docs/Toybox/Communications.html)
+- [Garmin DataField](https://developer.garmin.com/connect-iq/api-docs/Toybox/WatchUi/DataField.html)
 
-不具合を報告する際は、失敗したコマンドとエラーを添えてください。APIキーやトークンは含めないでください。
+## 確認状況
 
-## 確認済みの範囲
-
-Node 26.9.0で型チェックと21件のテスト、SDK 9.2.0でForerunner 265向けビルドが成功しました。シミュレーターでは初期画面の表示を確認しています。実Jev API接続、実機転送、実走行、電池消費は未確認です。
+Nodeの型チェックと24件のテスト、CIQシミュレーターの9件のテスト、Forerunner 265向け個人ビルドが成功しました。英語・日本語のデモ表示もシミュレーターで確認しています。実Jev API接続、実機転送、実走行、電池消費は未確認です。
 
 更新日: 2026-09-21
